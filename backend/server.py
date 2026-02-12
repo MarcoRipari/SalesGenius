@@ -337,23 +337,23 @@ def extract_product_attributes(name: str, description: str = "") -> Dict:
         'pantaloni': ['pantaloni', 'pants', 'trousers', 'jeans']
     }
     
-    # Colors
+    # Colors - include all variations
     colors = {
-        'rosa': ['rosa', 'pink', 'fuxia', 'fucsia'],
-        'blu': ['blu', 'blue', 'navy', 'azzurro', 'celeste'],
-        'bianco': ['bianco', 'bianca', 'white', 'panna', 'avorio'],
-        'nero': ['nero', 'nera', 'black'],
-        'rosso': ['rosso', 'rossa', 'red'],
-        'verde': ['verde', 'green', 'militare', 'military', 'oliva'],
-        'giallo': ['giallo', 'gialla', 'yellow', 'senape', 'mustard'],
-        'arancione': ['arancione', 'arancio', 'orange'],
-        'marrone': ['marrone', 'brown', 'cuoio', 'cognac', 'tan', 'camel'],
-        'grigio': ['grigio', 'grigia', 'grey', 'gray'],
-        'viola': ['viola', 'purple', 'lilla'],
-        'oro': ['oro', 'gold', 'dorato'],
-        'argento': ['argento', 'silver', 'argentato'],
-        'beige': ['beige', 'sabbia', 'sand', 'nude'],
-        'multicolor': ['multicolor', 'multicolore', 'fantasia']
+        'rosa': ['rosa', 'pink', 'fuxia', 'fucsia', 'magenta'],
+        'blu': ['blu', 'blue', 'navy', 'azzurro', 'azzurra', 'azzurri', 'azzurre', 'celeste', 'celesti'],
+        'bianco': ['bianco', 'bianca', 'bianchi', 'bianche', 'white', 'panna', 'avorio', 'latte'],
+        'nero': ['nero', 'nera', 'neri', 'nere', 'black'],
+        'rosso': ['rosso', 'rossa', 'rossi', 'rosse', 'red'],
+        'verde': ['verde', 'verdi', 'green', 'militare', 'military', 'oliva', 'kaki'],
+        'giallo': ['giallo', 'gialla', 'gialli', 'gialle', 'yellow', 'senape', 'mustard', 'ocra'],
+        'arancione': ['arancione', 'arancio', 'arancioni', 'orange'],
+        'marrone': ['marrone', 'marroni', 'brown', 'cuoio', 'cognac', 'tan', 'camel', 'tabacco'],
+        'grigio': ['grigio', 'grigia', 'grigi', 'grigie', 'grey', 'gray', 'antracite'],
+        'viola': ['viola', 'purple', 'lilla', 'lavanda', 'prugna'],
+        'oro': ['oro', 'gold', 'dorato', 'dorata', 'dorati', 'dorate'],
+        'argento': ['argento', 'silver', 'argentato', 'argentata', 'argentati', 'argentate'],
+        'beige': ['beige', 'sabbia', 'sand', 'nude', 'cammello'],
+        'multicolor': ['multicolor', 'multicolore', 'fantasia', 'colorato', 'colorata', 'colorati', 'colorate']
     }
     
     # Gender/Age
