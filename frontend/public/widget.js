@@ -18,6 +18,7 @@
   let sessionId = localStorage.getItem('sg_session_' + widgetKey) || generateSessionId();
   let config = null;
   let messages = [];
+  let cartCount = 0;
 
   function generateSessionId() {
     const id = 'sg_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
@@ -66,12 +67,28 @@
       left: 20px;
     }
     
+    .sg-cart-badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background: #ef4444;
+      color: white;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
     #sg-widget-window {
       position: fixed;
       bottom: 90px;
       right: 20px;
-      width: 380px;
-      height: 550px;
+      width: 400px;
+      height: 600px;
       max-height: calc(100vh - 120px);
       background: #fff;
       border-radius: 16px;
@@ -186,11 +203,7 @@
     }
     
     .sg-message {
-      max-width: 85%;
-      padding: 12px 16px;
-      border-radius: 16px;
-      font-size: 14px;
-      line-height: 1.5;
+      max-width: 90%;
       animation: sg-fade-in 0.3s ease-out;
     }
     
@@ -199,18 +212,123 @@
       to { opacity: 1; transform: translateY(0); }
     }
     
-    .sg-message.sg-bot {
+    .sg-message-text {
+      padding: 12px 16px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    
+    .sg-message.sg-bot .sg-message-text {
       background: white;
       border-radius: 16px 16px 16px 4px;
-      align-self: flex-start;
       box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
     
+    .sg-message.sg-bot {
+      align-self: flex-start;
+    }
+    
     .sg-message.sg-user {
+      align-self: flex-end;
+    }
+    
+    .sg-message.sg-user .sg-message-text {
       background: var(--sg-primary, #F97316);
       color: white;
       border-radius: 16px 16px 4px 16px;
-      align-self: flex-end;
+    }
+    
+    /* Product Cards */
+    .sg-products-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+    
+    .sg-product-card {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .sg-product-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+    
+    .sg-product-image {
+      width: 100%;
+      height: 100px;
+      object-fit: cover;
+      background: #f1f5f9;
+    }
+    
+    .sg-product-image-placeholder {
+      width: 100%;
+      height: 100px;
+      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #94a3b8;
+    }
+    
+    .sg-product-info {
+      padding: 10px;
+    }
+    
+    .sg-product-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1e293b;
+      margin: 0 0 4px 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    
+    .sg-product-price {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--sg-primary, #F97316);
+      margin: 0 0 8px 0;
+    }
+    
+    .sg-product-actions {
+      display: flex;
+      gap: 6px;
+    }
+    
+    .sg-product-btn {
+      flex: 1;
+      padding: 8px 6px;
+      border: none;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      text-decoration: none;
+      text-align: center;
+    }
+    
+    .sg-product-btn:hover {
+      opacity: 0.9;
+    }
+    
+    .sg-btn-view {
+      background: #e2e8f0;
+      color: #475569;
+    }
+    
+    .sg-btn-cart {
+      background: var(--sg-primary, #F97316);
+      color: white;
     }
     
     .sg-typing {
@@ -295,6 +413,27 @@
       text-decoration: none;
     }
     
+    /* Toast notification */
+    .sg-toast {
+      position: fixed;
+      bottom: 160px;
+      right: 30px;
+      background: #22c55e;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      animation: sg-toast-in 0.3s ease-out;
+      z-index: 1000000;
+    }
+    
+    @keyframes sg-toast-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
     @media (max-width: 480px) {
       #sg-widget-window {
         width: calc(100vw - 20px);
@@ -309,6 +448,10 @@
         left: 10px;
         right: 10px;
       }
+      
+      .sg-products-grid {
+        grid-template-columns: 1fr;
+      }
     }
   `;
 
@@ -317,7 +460,9 @@
     chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>',
     close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
     send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>',
-    bot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>'
+    bot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>',
+    cart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>',
+    image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>'
   };
 
   // Create widget
@@ -349,6 +494,7 @@
     container.innerHTML = `
       <button id="sg-widget-bubble" class="${isLeft ? 'sg-left' : ''}" aria-label="Open chat">
         ${icons.chat}
+        <span class="sg-cart-badge" id="sg-cart-badge" style="display:none">0</span>
       </button>
       <div id="sg-widget-window" class="${isLeft ? 'sg-left' : ''}">
         <div id="sg-widget-header">
@@ -363,7 +509,7 @@
         </div>
         <div id="sg-widget-messages"></div>
         <div id="sg-widget-input-area">
-          <input type="text" id="sg-widget-input" placeholder="Scrivi un messaggio..." />
+          <input type="text" id="sg-widget-input" placeholder="Cerca un prodotto o fai una domanda..." />
           <button id="sg-widget-send" aria-label="Send">${icons.send}</button>
         </div>
         <div id="sg-widget-powered">Powered by <a href="https://salesgenius.ai" target="_blank">SalesGenius</a></div>
@@ -375,9 +521,9 @@
     // Load history
     await loadHistory();
 
-    // Add welcome message if no history
+    // If no history, add welcome message
     if (messages.length === 0) {
-      addMessage(config.welcome_message || 'Ciao! Come posso aiutarti oggi?', 'bot');
+      addMessage(config.welcome_message || 'Ciao! Come posso aiutarti? Cerca un prodotto o fammi una domanda!', 'bot');
     }
 
     // Event listeners
@@ -396,11 +542,11 @@
     
     if (isOpen) {
       window.classList.add('sg-open');
-      bubble.innerHTML = icons.close;
+      bubble.innerHTML = icons.close + '<span class="sg-cart-badge" id="sg-cart-badge" style="' + (cartCount > 0 ? '' : 'display:none') + '">' + cartCount + '</span>';
       document.getElementById('sg-widget-input').focus();
     } else {
       window.classList.remove('sg-open');
-      bubble.innerHTML = icons.chat;
+      bubble.innerHTML = icons.chat + '<span class="sg-cart-badge" id="sg-cart-badge" style="' + (cartCount > 0 ? '' : 'display:none') + '">' + cartCount + '</span>';
     }
   }
 
@@ -414,7 +560,7 @@
         messages = [];
         
         history.forEach(msg => {
-          addMessage(msg.content, msg.role === 'assistant' ? 'bot' : 'user', false);
+          addMessage(msg.content, msg.role === 'assistant' ? 'bot' : 'user', msg.products, false);
         });
       }
     } catch (e) {
@@ -422,17 +568,103 @@
     }
   }
 
-  function addMessage(text, type, scroll = true) {
+  function addMessage(text, type, products = null, scroll = true) {
     const messagesEl = document.getElementById('sg-widget-messages');
     const msgEl = document.createElement('div');
     msgEl.className = `sg-message sg-${type}`;
-    msgEl.textContent = text;
+    
+    let html = `<div class="sg-message-text">${escapeHtml(text)}</div>`;
+    
+    // Add product cards if available
+    if (products && products.length > 0) {
+      html += '<div class="sg-products-grid">';
+      products.forEach(product => {
+        html += createProductCard(product);
+      });
+      html += '</div>';
+    }
+    
+    msgEl.innerHTML = html;
     messagesEl.appendChild(msgEl);
-    messages.push({ text, type });
+    messages.push({ text, type, products });
+    
+    // Attach event listeners to product buttons
+    if (products) {
+      msgEl.querySelectorAll('.sg-btn-cart').forEach(btn => {
+        btn.addEventListener('click', () => addToCart(btn.dataset.productId, btn.dataset.productName));
+      });
+    }
     
     if (scroll) {
       messagesEl.scrollTop = messagesEl.scrollHeight;
     }
+  }
+
+  function createProductCard(product) {
+    const imageHtml = product.image_url 
+      ? `<img src="${escapeHtml(product.image_url)}" class="sg-product-image" alt="${escapeHtml(product.name)}" onerror="this.outerHTML='<div class=\\'sg-product-image-placeholder\\'>${icons.image}</div>'">`
+      : `<div class="sg-product-image-placeholder">${icons.image}</div>`;
+    
+    return `
+      <div class="sg-product-card">
+        ${imageHtml}
+        <div class="sg-product-info">
+          <h5 class="sg-product-name">${escapeHtml(product.name || 'Prodotto')}</h5>
+          <p class="sg-product-price">${escapeHtml(product.price || 'Prezzo su richiesta')}</p>
+          <div class="sg-product-actions">
+            ${product.product_url ? `<a href="${escapeHtml(product.product_url)}" target="_blank" class="sg-product-btn sg-btn-view">Vedi</a>` : ''}
+            <button class="sg-product-btn sg-btn-cart" data-product-id="${product.id}" data-product-name="${escapeHtml(product.name)}">
+              Carrello
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  async function addToCart(productId, productName) {
+    try {
+      const res = await fetch(`${API_BASE}/cart/add?product_id=${productId}&session_id=${sessionId}&widget_key=${widgetKey}`, {
+        method: 'POST'
+      });
+      
+      if (res.ok) {
+        cartCount++;
+        updateCartBadge();
+        showToast(`${productName} aggiunto al carrello!`);
+        
+        // Notify parent window if callback exists
+        if (window.SalesGeniusOnCartAdd) {
+          window.SalesGeniusOnCartAdd({ productId, productName, sessionId });
+        }
+      }
+    } catch (e) {
+      console.error('SalesGenius: Error adding to cart', e);
+    }
+  }
+
+  function updateCartBadge() {
+    const badges = document.querySelectorAll('#sg-cart-badge');
+    badges.forEach(badge => {
+      badge.textContent = cartCount;
+      badge.style.display = cartCount > 0 ? 'flex' : 'none';
+    });
+  }
+
+  function showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'sg-toast';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => toast.remove(), 3000);
   }
 
   function showTyping() {
@@ -480,7 +712,7 @@
       
       if (res.ok) {
         const data = await res.json();
-        addMessage(data.content, 'bot');
+        addMessage(data.content, 'bot', data.products);
       } else {
         addMessage('Mi scuso, si è verificato un errore. Riprova più tardi.', 'bot');
       }
@@ -499,4 +731,12 @@
   } else {
     init();
   }
+  
+  // Expose API for parent window
+  window.SalesGenius = {
+    open: () => { if (!isOpen) toggleWidget(); },
+    close: () => { if (isOpen) toggleWidget(); },
+    getSessionId: () => sessionId,
+    getCartCount: () => cartCount
+  };
 })();
