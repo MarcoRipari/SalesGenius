@@ -483,6 +483,8 @@ class SalesGeniusAPITester:
         self.test_leads_endpoints()
         self.test_pricing_endpoint()
         self.test_chat_endpoints()
+        self.test_team_management_endpoints()
+        self.test_admin_settings_endpoints()
         
         # Print final results
         print("\n" + "="*60)
