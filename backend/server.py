@@ -799,6 +799,7 @@ IMPORTANTE - RICERCA PRODOTTI:
         "session_id": req.session_id,
         "role": "assistant",
         "content": ai_response,
+        "products": found_products if found_products else None,
         "timestamp": ai_msg["timestamp"]
     }
 
@@ -806,6 +807,73 @@ IMPORTANTE - RICERCA PRODOTTI:
 async def get_chat_history(session_id: str):
     messages = await db.messages.find({"session_id": session_id}, {"_id": 0}).sort("timestamp", 1).to_list(100)
     return messages
+
+
+# ==================== CART ROUTES ====================
+
+@api_router.post("/cart/add")
+async def add_to_cart(
+    product_id: str,
+    session_id: str,
+    widget_key: str,
+    quantity: int = 1
+):
+    """Add a product to the visitor's cart"""
+    user = await db.users.find_one({"widget_key": widget_key}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="Widget non valido")
+    
+    product = await db.products.find_one({"id": product_id, "user_id": user["id"]}, {"_id": 0})
+    if not product:
+        raise HTTPException(status_code=404, detail="Prodotto non trovato")
+    
+    # Add or update cart item
+    existing = await db.cart_items.find_one({"session_id": session_id, "product_id": product_id})
+    
+    if existing:
+        await db.cart_items.update_one(
+            {"session_id": session_id, "product_id": product_id},
+            {"$inc": {"quantity": quantity}}
+        )
+    else:
+        cart_item = {
+            "id": str(uuid.uuid4()),
+            "session_id": session_id,
+            "user_id": user["id"],
+            "product_id": product_id,
+            "product_name": product.get("name"),
+            "product_price": product.get("price"),
+            "product_price_value": product.get("price_value"),
+            "product_image": product.get("image_url"),
+            "product_url": product.get("product_url"),
+            "quantity": quantity,
+            "added_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.cart_items.insert_one(cart_item)
+    
+    return {"message": "Prodotto aggiunto al carrello", "product": product.get("name")}
+
+@api_router.get("/cart/{session_id}")
+async def get_cart(session_id: str, widget_key: str):
+    """Get cart items for a session"""
+    user = await db.users.find_one({"widget_key": widget_key}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="Widget non valido")
+    
+    items = await db.cart_items.find({"session_id": session_id}, {"_id": 0}).to_list(50)
+    
+    total = sum(
+        (item.get("product_price_value", 0) or 0) * item.get("quantity", 1) 
+        for item in items
+    )
+    
+    return {"items": items, "total": round(total, 2), "count": len(items)}
+
+@api_router.delete("/cart/{session_id}/{product_id}")
+async def remove_from_cart(session_id: str, product_id: str):
+    """Remove item from cart"""
+    await db.cart_items.delete_one({"session_id": session_id, "product_id": product_id})
+    return {"message": "Prodotto rimosso dal carrello"}
 
 
 # ==================== CONVERSATIONS ROUTES ====================
