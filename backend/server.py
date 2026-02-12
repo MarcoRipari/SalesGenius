@@ -536,7 +536,7 @@ async def search_products(user_id: str, query: str, limit: int = 6) -> List[Dict
     # Build filter conditions
     filter_conditions = {"user_id": user_id}
     
-    # If we found specific attributes, filter by them
+    # If we found specific attributes, filter by them STRICTLY
     attribute_filters = []
     if query_attrs.get('product_type'):
         attribute_filters.append({"product_type": query_attrs['product_type']})
@@ -545,67 +545,75 @@ async def search_products(user_id: str, query: str, limit: int = 6) -> List[Dict
     if query_attrs.get('gender'):
         attribute_filters.append({"gender": query_attrs['gender']})
     
-    # Create text search conditions for remaining words
-    words = query_lower.split()
-    # Remove words that are attributes
-    attribute_words = []
+    # Priority 1: Search with ALL attributes
+    if attribute_filters:
+        filter_conditions["$and"] = attribute_filters
+        products = await db.products.find(filter_conditions, {"_id": 0}).limit(limit).to_list(limit)
+        if products:
+            return products
+    
+    # Priority 2: If we have product_type + color but no results, try with just those two
+    if query_attrs.get('product_type') and query_attrs.get('color'):
+        filter_conditions = {
+            "user_id": user_id,
+            "product_type": query_attrs['product_type'],
+            "color": query_attrs['color']
+        }
+        products = await db.products.find(filter_conditions, {"_id": 0}).limit(limit).to_list(limit)
+        if products:
+            return products
+    
+    # Priority 3: Search by product_type only
     if query_attrs.get('product_type'):
-        attribute_words.extend(['sneaker', 'sneakers', 'stivale', 'stivali', 'ballerina', 'ballerine', 'sandalo', 'sandali'])
+        filter_conditions = {
+            "user_id": user_id,
+            "product_type": query_attrs['product_type']
+        }
+        products = await db.products.find(filter_conditions, {"_id": 0}).limit(limit).to_list(limit)
+        if products:
+            return products
+    
+    # Priority 4: Search by color only
     if query_attrs.get('color'):
-        attribute_words.extend(['rosa', 'blu', 'bianco', 'bianca', 'nero', 'nera', 'rosso', 'verde', 'giallo', 'marrone'])
-    if query_attrs.get('gender'):
-        attribute_words.extend(['bambina', 'bambino', 'donna', 'uomo', 'bimba', 'bimbo'])
+        filter_conditions = {
+            "user_id": user_id,
+            "color": query_attrs['color']
+        }
+        products = await db.products.find(filter_conditions, {"_id": 0}).limit(limit).to_list(limit)
+        if products:
+            return products
     
-    search_words = [w for w in words if len(w) > 2 and w not in attribute_words and w not in ['una', 'uno', 'per', 'con', 'del', 'della', 'cerco', 'voglio', 'vorrei']]
+    # Priority 5: Full text search as fallback
+    words = [w for w in query_lower.split() if len(w) > 2 and w not in ['una', 'uno', 'per', 'con', 'del', 'della', 'cerco', 'voglio', 'vorrei', 'delle', 'degli']]
     
-    text_conditions = []
-    for word in search_words:
-        regex = {"$regex": word, "$options": "i"}
-        text_conditions.append({
-            "$or": [
-                {"name": regex},
-                {"description": regex},
-                {"category": regex},
-                {"brand": regex}
-            ]
-        })
-    
-    # Combine all conditions
-    all_conditions = attribute_filters + text_conditions
-    
-    if all_conditions:
-        filter_conditions["$and"] = all_conditions
-    
-    # Search with attribute filters first
-    products = await db.products.find(filter_conditions, {"_id": 0}).limit(limit).to_list(limit)
-    
-    # If no results with strict filtering, try relaxed search
-    if not products and (attribute_filters or text_conditions):
-        # Try with just attributes
-        if attribute_filters:
-            filter_conditions = {"user_id": user_id, "$and": attribute_filters}
-            products = await db.products.find(filter_conditions, {"_id": 0}).limit(limit).to_list(limit)
+    if words:
+        text_conditions = []
+        for word in words[:3]:
+            regex = {"$regex": word, "$options": "i"}
+            text_conditions.append({
+                "$or": [
+                    {"name": regex},
+                    {"description": regex},
+                    {"category": regex}
+                ]
+            })
         
-        # Try with just text search
-        if not products and text_conditions:
-            filter_conditions = {"user_id": user_id, "$or": text_conditions}
-            products = await db.products.find(filter_conditions, {"_id": 0}).limit(limit).to_list(limit)
-    
-    # Last resort - basic text search
-    if not products:
-        words = [w for w in query_lower.split() if len(w) > 2]
-        if words:
-            text_conditions = []
-            for word in words[:3]:
-                regex = {"$regex": word, "$options": "i"}
-                text_conditions.append({"name": regex})
-            
+        if text_conditions:
             products = await db.products.find(
-                {"user_id": user_id, "$or": text_conditions},
+                {"user_id": user_id, "$and": text_conditions},
                 {"_id": 0}
             ).limit(limit).to_list(limit)
+            
+            if not products:
+                products = await db.products.find(
+                    {"user_id": user_id, "$or": text_conditions},
+                    {"_id": 0}
+                ).limit(limit).to_list(limit)
+            
+            if products:
+                return products
     
-    return products
+    return []
 
 
 # ==================== AUTH ROUTES ====================
