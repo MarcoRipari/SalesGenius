@@ -339,39 +339,61 @@ def extract_product_from_element(element, base_url: str, source_id: str, user_id
                 product['name'] = name[:200]
                 break
     
-    # Find image
-    img = element.select_one('img')
-    if img:
-        img_src = img.get('src') or img.get('data-src') or img.get('data-lazy-src')
-        if img_src:
-            if not img_src.startswith('http'):
-                img_src = base_url + img_src if img_src.startswith('/') else base_url + '/' + img_src
-            product['image_url'] = img_src
+    # Find image - extended selectors
+    img_selectors = [
+        '.product-image img', '.product-image-wrapper img',
+        '.product-img img', '.product-media img',
+        'img.product-image', 'img[class*="product"]',
+        'picture img', 'img'
+    ]
+    for sel in img_selectors:
+        img = element.select_one(sel)
+        if img:
+            img_src = img.get('src') or img.get('data-src') or img.get('data-lazy-src') or img.get('data-original')
+            if img_src and not 'placeholder' in img_src.lower() and not 'loading' in img_src.lower():
+                if not img_src.startswith('http'):
+                    img_src = base_url + img_src if img_src.startswith('/') else base_url + '/' + img_src
+                product['image_url'] = img_src
+                break
     
-    # Find price
-    price_selectors = ['.price', '[class*="price"]', '.amount', '.woocommerce-Price-amount']
+    # Find price - extended selectors for Magento/Shopware
+    price_selectors = [
+        '.product-price', '.price', '.product-price-info',
+        '.price-box .price', '.special-price .price', '.regular-price .price',
+        '[class*="price"]', '.amount', '.woocommerce-Price-amount',
+        'span[data-price]'
+    ]
     for sel in price_selectors:
         price_el = element.select_one(sel)
         if price_el:
             price_text = price_el.get_text(strip=True)
-            product['price'] = price_text
-            # Extract numeric value
-            price_match = re.search(r'[\d,.]+', price_text.replace(',', '.'))
-            if price_match:
-                try:
-                    product['price_value'] = float(price_match.group().replace(',', '.'))
-                except:
-                    pass
-            break
+            if price_text and any(c.isdigit() for c in price_text):
+                product['price'] = price_text
+                # Extract numeric value - handle European format (1.234,56)
+                price_clean = price_text.replace('.', '').replace(',', '.')
+                price_match = re.search(r'[\d.]+', price_clean)
+                if price_match:
+                    try:
+                        product['price_value'] = float(price_match.group())
+                    except:
+                        pass
+                break
     
-    # Find link
-    link = element.select_one('a[href]')
-    if link:
-        href = link.get('href', '')
-        if href and not href.startswith('#') and not href.startswith('javascript'):
-            if not href.startswith('http'):
-                href = base_url + href if href.startswith('/') else base_url + '/' + href
-            product['product_url'] = href
+    # Find link - extended selectors
+    link_selectors = [
+        'a.product-item-link', 'a.product-image-link', 'a.product-name',
+        'h2 a', 'h3 a', '.product-name a', '.product-title a',
+        'a[href*="/product"]', 'a[href*="/p/"]', 'a[href]'
+    ]
+    for sel in link_selectors:
+        link = element.select_one(sel)
+        if link:
+            href = link.get('href', '')
+            if href and not href.startswith('#') and not href.startswith('javascript') and len(href) > 5:
+                if not href.startswith('http'):
+                    href = base_url + href if href.startswith('/') else base_url + '/' + href
+                product['product_url'] = href
+                break
     
     product['in_stock'] = True
     return product
