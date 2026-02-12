@@ -527,63 +527,63 @@ def extract_single_product(soup, url: str, source_id: str, user_id: str, base_ur
     return product
 
 async def search_products(user_id: str, query: str, limit: int = 6) -> List[Dict]:
-    """Search products by text query with smart filtering"""
+    """Search products by text query with smart filtering - strict attribute matching"""
     query_lower = query.lower()
     
     # Extract search attributes from query
     query_attrs = extract_product_attributes(query, "")
     
-    # Build filter conditions
-    filter_conditions = {"user_id": user_id}
+    has_type = query_attrs.get('product_type') is not None
+    has_color = query_attrs.get('color') is not None
+    has_gender = query_attrs.get('gender') is not None
     
-    # If we found specific attributes, filter by them STRICTLY
-    attribute_filters = []
-    if query_attrs.get('product_type'):
-        attribute_filters.append({"product_type": query_attrs['product_type']})
-    if query_attrs.get('color'):
-        attribute_filters.append({"color": query_attrs['color']})
-    if query_attrs.get('gender'):
-        attribute_filters.append({"gender": query_attrs['gender']})
-    
-    # Priority 1: Search with ALL attributes
-    if attribute_filters:
-        filter_conditions["$and"] = attribute_filters
+    # Priority 1: Search with ALL specified attributes (strict)
+    if has_type or has_color or has_gender:
+        filter_conditions = {"user_id": user_id}
+        if has_type:
+            filter_conditions["product_type"] = query_attrs['product_type']
+        if has_color:
+            filter_conditions["color"] = query_attrs['color']
+        if has_gender:
+            filter_conditions["gender"] = query_attrs['gender']
+        
         products = await db.products.find(filter_conditions, {"_id": 0}).limit(limit).to_list(limit)
+        
+        # If found products with exact match, return them even if less than limit
         if products:
             return products
     
-    # Priority 2: If we have product_type + color but no results, try with just those two
-    if query_attrs.get('product_type') and query_attrs.get('color'):
-        filter_conditions = {
-            "user_id": user_id,
-            "product_type": query_attrs['product_type'],
-            "color": query_attrs['color']
-        }
-        products = await db.products.find(filter_conditions, {"_id": 0}).limit(limit).to_list(limit)
-        if products:
-            return products
-    
-    # Priority 3: Search by product_type only
-    if query_attrs.get('product_type'):
+    # Priority 2: If no exact match, try with product_type only (but keep color in results message)
+    if has_type and has_color:
         filter_conditions = {
             "user_id": user_id,
             "product_type": query_attrs['product_type']
         }
         products = await db.products.find(filter_conditions, {"_id": 0}).limit(limit).to_list(limit)
         if products:
+            # Sort to put matching colors first
+            target_color = query_attrs['color']
+            products.sort(key=lambda p: (0 if p.get('color') == target_color else 1, p.get('name', '')))
             return products
     
-    # Priority 4: Search by color only
-    if query_attrs.get('color'):
-        filter_conditions = {
-            "user_id": user_id,
-            "color": query_attrs['color']
-        }
-        products = await db.products.find(filter_conditions, {"_id": 0}).limit(limit).to_list(limit)
+    # Priority 3: Search by type or color individually
+    if has_type:
+        products = await db.products.find(
+            {"user_id": user_id, "product_type": query_attrs['product_type']},
+            {"_id": 0}
+        ).limit(limit).to_list(limit)
         if products:
             return products
     
-    # Priority 5: Full text search as fallback
+    if has_color:
+        products = await db.products.find(
+            {"user_id": user_id, "color": query_attrs['color']},
+            {"_id": 0}
+        ).limit(limit).to_list(limit)
+        if products:
+            return products
+    
+    # Priority 4: Full text search as fallback
     words = [w for w in query_lower.split() if len(w) > 2 and w not in ['una', 'uno', 'per', 'con', 'del', 'della', 'cerco', 'voglio', 'vorrei', 'delle', 'degli']]
     
     if words:
@@ -610,8 +610,7 @@ async def search_products(user_id: str, query: str, limit: int = 6) -> List[Dict
                     {"_id": 0}
                 ).limit(limit).to_list(limit)
             
-            if products:
-                return products
+            return products
     
     return []
 
