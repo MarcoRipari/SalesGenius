@@ -939,6 +939,96 @@ async def get_conversation_messages(conversation_id: str, user = Depends(get_cur
     return {"conversation": conversation, "messages": messages}
 
 
+# ==================== SUPER ADMIN ROUTES ====================
+
+def check_super_admin(user):
+    """Check if user is super admin"""
+    if not user.get("is_super_admin"):
+        raise HTTPException(status_code=403, detail="Accesso negato. Solo Super Admin.")
+    return True
+
+@api_router.get("/superadmin/users")
+async def get_all_users(user = Depends(get_current_user)):
+    """Get all users in the system (Super Admin only)"""
+    check_super_admin(user)
+    users = await db.users.find({}, {"_id": 0, "password": 0}).to_list(500)
+    return users
+
+@api_router.get("/superadmin/stats")
+async def get_system_stats(user = Depends(get_current_user)):
+    """Get system-wide statistics (Super Admin only)"""
+    check_super_admin(user)
+    
+    total_users = await db.users.count_documents({})
+    total_conversations = await db.conversations.count_documents({})
+    total_messages = await db.messages.count_documents({})
+    total_products = await db.products.count_documents({})
+    total_leads = await db.leads.count_documents({})
+    total_sources = await db.knowledge_sources.count_documents({})
+    
+    return {
+        "total_users": total_users,
+        "total_conversations": total_conversations,
+        "total_messages": total_messages,
+        "total_products": total_products,
+        "total_leads": total_leads,
+        "total_knowledge_sources": total_sources
+    }
+
+@api_router.delete("/superadmin/users/{user_id}")
+async def delete_user(user_id: str, user = Depends(get_current_user)):
+    """Delete a user and all their data (Super Admin only)"""
+    check_super_admin(user)
+    
+    # Don't allow deleting super admin
+    target_user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+    if target_user.get("is_super_admin"):
+        raise HTTPException(status_code=400, detail="Non puoi eliminare il Super Admin")
+    
+    # Delete user and related data
+    await db.users.delete_one({"id": user_id})
+    await db.knowledge_sources.delete_many({"user_id": user_id})
+    await db.products.delete_many({"user_id": user_id})
+    await db.conversations.delete_many({"user_id": user_id})
+    await db.leads.delete_many({"user_id": user_id})
+    await db.widget_configs.delete_many({"user_id": user_id})
+    await db.team_members.delete_many({"org_id": user_id})
+    await db.admin_settings.delete_many({"org_id": user_id})
+    
+    return {"message": f"Utente {target_user['email']} eliminato con tutti i suoi dati"}
+
+@api_router.put("/superadmin/users/{user_id}")
+async def update_user_admin(user_id: str, company_name: str = None, email: str = None, user = Depends(get_current_user)):
+    """Update user info (Super Admin only)"""
+    check_super_admin(user)
+    
+    update_data = {}
+    if company_name:
+        update_data["company_name"] = company_name
+    if email:
+        update_data["email"] = email
+    
+    if update_data:
+        await db.users.update_one({"id": user_id}, {"$set": update_data})
+    
+    return {"message": "Utente aggiornato"}
+
+@api_router.get("/superadmin/collections")
+async def get_collections(user = Depends(get_current_user)):
+    """Get all MongoDB collections and their counts (Super Admin only)"""
+    check_super_admin(user)
+    
+    collections = await db.list_collection_names()
+    result = {}
+    for coll in collections:
+        count = await db[coll].count_documents({})
+        result[coll] = count
+    
+    return result
+
+
 # ==================== LEADS ROUTES ====================
 
 @api_router.post("/leads")
