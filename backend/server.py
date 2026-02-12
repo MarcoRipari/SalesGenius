@@ -373,13 +373,16 @@ async def send_chat_message(req: ChatMessageRequest):
     try:
         api_key = os.environ.get('EMERGENT_LLM_KEY')
         
-        system_message = f"""Sei {bot_name}, un assistente vendite AI professionale e amichevole per {user.get('company_name', 'un\'azienda')}.
+        company_name = user.get('company_name', "un'azienda")
+        kb_content = knowledge_context[:3000] if knowledge_context else 'Nessuna informazione specifica disponibile.'
+        
+        system_message = f"""Sei {bot_name}, un assistente vendite AI professionale e amichevole per {company_name}.
 Il tuo obiettivo è aiutare i visitatori a trovare prodotti/servizi e rispondere alle loro domande.
 Rispondi sempre in italiano, in modo conciso e utile.
 Se non conosci la risposta, suggerisci di contattare l'azienda direttamente.
 
 CONOSCENZE AZIENDALI:
-{knowledge_context[:3000] if knowledge_context else 'Nessuna informazione specifica disponibile.'}
+{kb_content}
 """
         
         chat = LlmChat(
