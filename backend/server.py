@@ -232,21 +232,31 @@ async def extract_products_from_url(url: str, source_id: str, user_id: str) -> L
             
             # Strategy 2: Look for common e-commerce product patterns
             if not products:
-                # WooCommerce, Shopify, generic patterns
+                # Extended selectors for Magento, Shopware, WooCommerce, Shopify
                 product_selectors = [
-                    '.product', '.product-item', '.product-card', 
-                    '[data-product]', '.woocommerce-loop-product',
-                    '.product-grid-item', '.collection-product',
-                    'article.product', '.products li'
+                    # Magento
+                    '.product-item-container', '.product-item', '.item.product',
+                    '.products-grid .item', '.category-products .item',
+                    # Shopware
+                    '.product-box', '.card.product-box', '.product-card',
+                    # WooCommerce
+                    '.woocommerce-loop-product', '.products li.product',
+                    # Shopify
+                    '.product-grid-item', '.collection-product', '.grid__item',
+                    # Generic
+                    '.product', '[data-product]', 'article.product',
+                    '.product-container', '.product-wrapper'
                 ]
                 
                 for selector in product_selectors:
                     items = soup.select(selector)
                     for item in items[:50]:  # Limit to 50 products per page
                         product = extract_product_from_element(item, base_url, source_id, user_id)
-                        if product and product.get('name'):
-                            products.append(product)
-                    if products:
+                        if product and product.get('name') and len(product.get('name', '')) > 2:
+                            # Skip if name is just a category name
+                            if product.get('product_url') and product.get('product_url') != url:
+                                products.append(product)
+                    if len(products) >= 3:  # Found enough products
                         break
             
             # Strategy 3: Look for individual product page
