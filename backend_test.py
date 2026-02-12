@@ -468,6 +468,143 @@ class SalesGeniusAPITester:
             200
         )
 
+    def test_product_endpoints(self):
+        """Test product management endpoints (Required functionality)"""
+        print("\n" + "="*50)
+        print("TESTING PRODUCT ENDPOINTS (REQUIRED FUNCTIONALITY)")
+        print("="*50)
+
+        # Get all products
+        success, products = self.run_test(
+            "Get All Products",
+            "GET", 
+            "products",
+            200
+        )
+        
+        if success:
+            print(f"   Found {len(products)} existing products")
+
+        # Search products
+        self.run_test(
+            "Search Products",
+            "GET",
+            "products/search?q=scarpa+da+bambina+rosa",
+            200
+        )
+
+        # Create a new product manually
+        test_product = {
+            "name": "Test Scarpa da Bambina Rosa",
+            "description": "Scarpa rosa per bambina, perfetta per ogni occasione",
+            "price": "€ 45,90",
+            "price_value": 45.90,
+            "image_url": "https://example.com/scarpa-rosa.jpg",
+            "product_url": "https://example.com/scarpa-rosa", 
+            "category": "Scarpe Bambina",
+            "in_stock": True
+        }
+
+        success, response = self.run_test(
+            "Create Product (Manual)",
+            "POST",
+            "products",
+            200,
+            data=test_product
+        )
+
+        created_product_id = None
+        if success and 'id' in response:
+            created_product_id = response['id']
+            print(f"   Created product ID: {created_product_id}")
+
+            # Test update product
+            updated_product = test_product.copy()
+            updated_product['name'] = "Updated Scarpa da Bambina Rosa"
+            updated_product['price'] = "€ 49,90"
+            
+            self.run_test(
+                "Update Product",
+                "PUT",
+                f"products/{created_product_id}",
+                200,
+                data=updated_product
+            )
+
+        # Test cart functionality
+        print(f"\n--- Testing Cart Integration ---")
+        
+        if created_product_id and self.user_data:
+            widget_key = self.user_data.get('widget_key')
+            session_id = f"test_cart_session_{int(datetime.now().timestamp())}"
+            
+            if widget_key:
+                # Add to cart
+                cart_url = f"cart/add?product_id={created_product_id}&session_id={session_id}&widget_key={widget_key}"
+                success, cart_response = self.run_test(
+                    "Add Product to Cart",
+                    "POST",
+                    cart_url,
+                    200
+                )
+
+                # Get cart contents  
+                get_cart_url = f"cart/{session_id}?widget_key={widget_key}"
+                success, cart_data = self.run_test(
+                    "Get Cart Contents",
+                    "GET", 
+                    get_cart_url,
+                    200
+                )
+                
+                if success:
+                    print(f"   Cart items: {len(cart_data.get('items', []))}")
+                    print(f"   Cart total: €{cart_data.get('total', 0)}")
+
+                # Remove from cart
+                self.run_test(
+                    "Remove Product from Cart",
+                    "DELETE",
+                    f"cart/{session_id}/{created_product_id}",
+                    200
+                )
+
+        # Test product search with AI (simulate bot query for products)
+        if self.user_data:
+            widget_key = self.user_data.get('widget_key')
+            session_id = f"test_product_search_{int(datetime.now().timestamp())}"
+            
+            if widget_key:
+                chat_request = {
+                    "session_id": session_id,
+                    "message": "scarpa da bambina rosa",
+                    "widget_key": widget_key
+                }
+                
+                success, response = self.run_test(
+                    "AI Product Search via Chat",
+                    "POST",
+                    "chat/message",
+                    200,
+                    data=chat_request
+                )
+                
+                if success:
+                    products_found = response.get('products', [])
+                    print(f"   AI found {len(products_found) if products_found else 0} products")
+                    if products_found:
+                        for i, product in enumerate(products_found[:3]):
+                            print(f"     {i+1}. {product.get('name', 'Unknown')} - {product.get('price', 'N/A')}")
+
+        # Clean up - delete test product
+        if created_product_id:
+            self.run_test(
+                "Delete Test Product",
+                "DELETE",
+                f"products/{created_product_id}",
+                200
+            )
+
     def run_all_tests(self):
         """Run all API tests"""
         print("🚀 Starting SalesGenius API Tests")
@@ -477,6 +614,7 @@ class SalesGeniusAPITester:
         # Run all test suites
         self.test_auth_endpoints()
         self.test_knowledge_endpoints()
+        self.test_product_endpoints()  # Added product tests
         self.test_widget_endpoints() 
         self.test_analytics_endpoints()
         self.test_conversations_endpoints()
