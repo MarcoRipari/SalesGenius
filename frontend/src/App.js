@@ -57,6 +57,7 @@ function AppRoutes() {
       <Route path="/dashboard" element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
         <Route index element={<DashboardHome />} />
         <Route path="knowledge" element={<KnowledgeBase />} />
+        <Route path="products" element={<Products />} />
         <Route path="widget" element={<WidgetConfig />} />
         <Route path="conversations" element={<Conversations />} />
         <Route path="leads" element={<Leads />} />
