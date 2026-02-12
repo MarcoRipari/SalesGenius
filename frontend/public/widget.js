@@ -260,16 +260,24 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.12);
     }
     
+    .sg-product-image-container {
+      width: 100%;
+      height: 120px;
+      overflow: hidden;
+      background: #f8fafc;
+    }
+    
     .sg-product-image {
       width: 100%;
-      height: 100px;
-      object-fit: cover;
-      background: #f1f5f9;
+      height: 100%;
+      object-fit: contain;
+      object-position: center;
+      background: white;
     }
     
     .sg-product-image-placeholder {
       width: 100%;
-      height: 100px;
+      height: 100%;
       background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
       display: flex;
       align-items: center;
