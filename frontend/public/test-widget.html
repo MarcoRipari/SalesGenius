@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Widget SalesGenius</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #1e293b; }
+        p { color: #64748b; line-height: 1.6; }
+        .test-info {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .test-info code {
+            background: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test Widget SalesGenius</h1>
+        <p>Questa pagina serve per testare il widget chat di SalesGenius.</p>
+        
+        <div class="test-info">
+            <h3>Come testare:</h3>
+            <ol>
+                <li>Clicca sull'icona chat in basso a destra</li>
+                <li>Prova a chiedere: <code>"Cerco delle sneaker bianche"</code></li>
+                <li>Oppure: <code>"Voglio delle scarpe blu"</code></li>
+                <li>Verifica che appaiano le card prodotto con immagini</li>
+            </ol>
+        </div>
+        
+        <p>Il widget è configurato con la Widget Key: <code>admin_f51896</code></p>
+    </div>
+
+    <!-- SalesGenius Widget -->
+    <script>
+        (function() {
+            var s = document.createElement('script');
+            s.src = '/widget.js';
+            s.dataset.widgetKey = 'admin_f51896';
+            document.body.appendChild(s);
+        })();
+    </script>
+</body>
+</html>
