@@ -323,13 +323,21 @@ def extract_product_from_element(element, base_url: str, source_id: str, user_id
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
-    # Find name
-    name_selectors = ['h2', 'h3', 'h4', '.product-name', '.product-title', '.title', '[class*="title"]', '[class*="name"]', 'a']
+    # Find name - extended selectors for Magento/Shopware
+    name_selectors = [
+        '.product-name', '.product-name-model', '.product-title', 
+        '.product-item-name', '.product-item-link',
+        'h2 a', 'h3 a', 'h4 a', 'h2', 'h3', 'h4',
+        '.title a', '.name a', '[class*="title"]', '[class*="name"]',
+        'a.product-item-link', 'a[title]'
+    ]
     for sel in name_selectors:
         name_el = element.select_one(sel)
-        if name_el and name_el.get_text(strip=True):
-            product['name'] = name_el.get_text(strip=True)[:200]
-            break
+        if name_el:
+            name = name_el.get('title') or name_el.get_text(strip=True)
+            if name and len(name) > 2:
+                product['name'] = name[:200]
+                break
     
     # Find image
     img = element.select_one('img')
