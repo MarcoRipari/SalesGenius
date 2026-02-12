@@ -657,6 +657,49 @@ async def rescan_products(source_id: str, user = Depends(get_current_user)):
     
     return {"message": f"Scansione completata. {products_count} prodotti trovati.", "products_count": products_count}
 
+# Product manual add/edit
+class ProductCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price: Optional[str] = None
+    price_value: Optional[float] = None
+    image_url: Optional[str] = None
+    product_url: str
+    category: Optional[str] = None
+    in_stock: bool = True
+
+@api_router.post("/products")
+async def create_product(product: ProductCreate, user = Depends(get_current_user)):
+    """Manually add a product"""
+    product_doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "source_id": "manual",
+        **product.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.products.insert_one(product_doc)
+    return {"id": product_doc["id"], "message": "Prodotto aggiunto"}
+
+@api_router.put("/products/{product_id}")
+async def update_product(product_id: str, product: ProductCreate, user = Depends(get_current_user)):
+    """Update a product"""
+    result = await db.products.update_one(
+        {"id": product_id, "user_id": user["id"]},
+        {"$set": {**product.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Prodotto non trovato")
+    return {"message": "Prodotto aggiornato"}
+
+@api_router.delete("/products/{product_id}")
+async def delete_product(product_id: str, user = Depends(get_current_user)):
+    """Delete a product"""
+    result = await db.products.delete_one({"id": product_id, "user_id": user["id"]})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Prodotto non trovato")
+    return {"message": "Prodotto eliminato"}
+
 
 # ==================== WIDGET CONFIG ROUTES ====================
 
