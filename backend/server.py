@@ -79,6 +79,34 @@ class WidgetConfigUpdate(BaseModel):
     position: str = "bottom-right"
     avatar_url: Optional[str] = None
 
+# Team Management Models
+class TeamMemberInvite(BaseModel):
+    email: EmailStr
+    role: str = "member"  # admin, member, viewer
+
+class TeamMemberUpdate(BaseModel):
+    role: str
+
+class TeamMemberResponse(BaseModel):
+    id: str
+    email: str
+    role: str
+    status: str  # pending, active
+    invited_at: str
+    joined_at: Optional[str] = None
+
+# Admin Settings Models
+class AdminSettingsUpdate(BaseModel):
+    company_name: Optional[str] = None
+    company_logo: Optional[str] = None
+    support_email: Optional[str] = None
+    timezone: Optional[str] = None
+    language: Optional[str] = None
+    notification_new_lead: Optional[bool] = None
+    notification_new_conversation: Optional[bool] = None
+    ai_model: Optional[str] = None
+    max_tokens_per_response: Optional[int] = None
+
 class WidgetConfigResponse(BaseModel):
     id: str
     user_id: str
