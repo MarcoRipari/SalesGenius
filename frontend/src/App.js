@@ -19,6 +19,7 @@ import Products from "./pages/Products";
 import Settings from "./pages/Settings";
 import TeamManagement from "./pages/TeamManagement";
 import AdminSettings from "./pages/AdminSettings";
+import SuperAdmin from "./pages/SuperAdmin";
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
