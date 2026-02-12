@@ -724,6 +724,9 @@ async def send_chat_message(req: ChatMessageRequest):
     }
     await db.messages.insert_one(user_msg)
     
+    # Search for products based on user message
+    found_products = await search_products(user["id"], req.message, limit=6)
+    
     # Get knowledge base content
     sources = await db.knowledge_sources.find({"user_id": user["id"], "status": "active"}, {"_id": 0}).to_list(50)
     knowledge_context = "\n\n".join([s.get("content", "")[:2000] for s in sources if s.get("content")])
@@ -732,20 +735,31 @@ async def send_chat_message(req: ChatMessageRequest):
     widget_config = await db.widget_configs.find_one({"user_id": user["id"]}, {"_id": 0})
     bot_name = widget_config.get("bot_name", "SalesGenius") if widget_config else "SalesGenius"
     
+    # Build product context for AI
+    product_context = ""
+    if found_products:
+        product_context = "\n\nPRODOTTI TROVATI NEL CATALOGO:\n"
+        for i, p in enumerate(found_products, 1):
+            product_context += f"{i}. {p.get('name', 'Prodotto')} - {p.get('price', 'Prezzo non disponibile')}\n"
+    
     # Generate AI response
     try:
         api_key = os.environ.get('EMERGENT_LLM_KEY')
         
         company_name = user.get('company_name', "un'azienda")
-        kb_content = knowledge_context[:3000] if knowledge_context else 'Nessuna informazione specifica disponibile.'
+        kb_content = knowledge_context[:2000] if knowledge_context else ''
         
         system_message = f"""Sei {bot_name}, un assistente vendite AI professionale e amichevole per {company_name}.
-Il tuo obiettivo è aiutare i visitatori a trovare prodotti/servizi e rispondere alle loro domande.
+Il tuo obiettivo è aiutare i visitatori a trovare prodotti e rispondere alle loro domande.
 Rispondi sempre in italiano, in modo conciso e utile.
-Se non conosci la risposta, suggerisci di contattare l'azienda direttamente.
 
-CONOSCENZE AZIENDALI:
-{kb_content}
+IMPORTANTE - RICERCA PRODOTTI:
+- Se l'utente cerca un prodotto e trovi risultati nel catalogo, descrivi brevemente i prodotti trovati
+- Non inventare prodotti o prezzi, usa solo quelli forniti nel contesto
+- Se non trovi prodotti corrispondenti, suggerisci di descrivere meglio cosa cerca o di contattare l'azienda
+
+{f"CONOSCENZE AZIENDALI:{chr(10)}{kb_content}" if kb_content else ""}
+{product_context}
 """
         
         chat = LlmChat(
@@ -769,6 +783,7 @@ CONOSCENZE AZIENDALI:
         "session_id": req.session_id,
         "role": "assistant",
         "content": ai_response,
+        "products": found_products if found_products else None,
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
     await db.messages.insert_one(ai_msg)
