@@ -101,7 +101,7 @@
 }
 
 .feature-card {
-    @apply group relative overflow-hidden rounded-2xl border border-border bg-card p-8 transition-all duration-300;
+    @apply relative overflow-hidden rounded-2xl border border-border bg-card p-8 transition-all duration-300;
 }
 
 .feature-card:hover {
