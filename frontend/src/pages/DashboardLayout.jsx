@@ -17,12 +17,14 @@ import {
   X,
   Palette,
   UsersRound,
-  Shield
+  Shield,
+  Package
 } from "lucide-react";
 
 const navItems = [
   { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { path: "/dashboard/knowledge", icon: Database, label: "Knowledge Base" },
+  { path: "/dashboard/products", icon: Package, label: "Prodotti" },
   { path: "/dashboard/widget", icon: Palette, label: "Widget" },
   { path: "/dashboard/conversations", icon: MessageCircle, label: "Conversazioni" },
   { path: "/dashboard/leads", icon: Users, label: "Lead" },
