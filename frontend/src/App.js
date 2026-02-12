@@ -59,6 +59,8 @@ function AppRoutes() {
         <Route path="widget" element={<WidgetConfig />} />
         <Route path="conversations" element={<Conversations />} />
         <Route path="leads" element={<Leads />} />
+        <Route path="team" element={<TeamManagement />} />
+        <Route path="admin" element={<AdminSettings />} />
         <Route path="settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" />} />
