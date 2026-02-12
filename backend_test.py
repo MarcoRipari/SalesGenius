@@ -359,6 +359,115 @@ class SalesGeniusAPITester:
                 200
             )
 
+    def test_team_management_endpoints(self):
+        """Test team management endpoints"""
+        print("\n" + "="*50)
+        print("TESTING TEAM MANAGEMENT ENDPOINTS")
+        print("="*50)
+
+        if not self.token:
+            print("❌ Skipping team tests - no auth token")
+            return
+
+        # Get team members
+        success, members_data = self.run_test(
+            "Get Team Members",
+            "GET",
+            "team/members",
+            200
+        )
+
+        # Invite team member
+        test_email = f"team_member_{datetime.now().strftime('%H%M%S')}@demo.com"
+        success, invite_response = self.run_test(
+            "Invite Team Member",
+            "POST",
+            "team/invite",
+            200,
+            data={
+                "email": test_email,
+                "role": "member"
+            }
+        )
+
+        member_id = None
+        if success and 'member' in invite_response:
+            member_id = invite_response['member'].get('id')
+
+        # Update team member role (if we have a member)
+        if member_id:
+            self.run_test(
+                "Update Team Member Role",
+                "PUT",
+                f"team/members/{member_id}",
+                200,
+                data={"role": "viewer"}
+            )
+
+            # Remove team member
+            self.run_test(
+                "Remove Team Member",
+                "DELETE",
+                f"team/members/{member_id}",
+                200
+            )
+
+        # Test invalid invite
+        self.run_test(
+            "Invalid Team Invite (Missing Email)",
+            "POST",
+            "team/invite",
+            422,  # FastAPI validation error
+            data={"role": "member"}
+        )
+
+    def test_admin_settings_endpoints(self):
+        """Test admin settings endpoints"""
+        print("\n" + "="*50)
+        print("TESTING ADMIN SETTINGS ENDPOINTS")
+        print("="*50)
+
+        if not self.token:
+            print("❌ Skipping admin tests - no auth token")
+            return
+
+        # Get admin settings
+        success, settings_data = self.run_test(
+            "Get Admin Settings",
+            "GET",
+            "admin/settings",
+            200
+        )
+
+        # Update admin settings
+        if success:
+            updated_settings = {
+                "company_name": "Test Updated Company",
+                "support_email": "test-support@demo.com",
+                "timezone": "Europe/London",
+                "language": "en",
+                "notification_new_lead": False,
+                "notification_new_conversation": True,
+                "ai_model": "gemini-2.5-flash",
+                "max_tokens_per_response": 800
+            }
+            
+            self.run_test(
+                "Update Admin Settings",
+                "PUT",
+                "admin/settings",
+                200,
+                data=updated_settings
+            )
+
+        # Get API config
+        self.run_test(
+            "Get Admin API Config",
+            "GET",
+            "admin/api-config",
+            200
+        )
+
     def run_all_tests(self):
         """Run all API tests"""
         print("🚀 Starting SalesGenius API Tests")
