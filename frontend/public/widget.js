@@ -597,18 +597,28 @@
   }
 
   function createProductCard(product) {
-    const imageHtml = product.image_url 
-      ? `<img src="${escapeHtml(product.image_url)}" class="sg-product-image" alt="${escapeHtml(product.name)}" onerror="this.outerHTML='<div class=\\'sg-product-image-placeholder\\'>${icons.image}</div>'">`
-      : `<div class="sg-product-image-placeholder">${icons.image}</div>`;
+    // Sanitize image URL
+    const imgUrl = product.image_url ? product.image_url.replace(/"/g, '&quot;') : '';
+    const productName = (product.name || 'Prodotto').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const productPrice = (product.price || 'Prezzo su richiesta').replace(/"/g, '&quot;');
+    const productUrl = product.product_url ? product.product_url.replace(/"/g, '&quot;') : '';
+    
+    const imageHtml = imgUrl 
+      ? `<div class="sg-product-image-container"><img src="${imgUrl}" class="sg-product-image" alt="${productName}"></div>`
+      : `<div class="sg-product-image-container"><div class="sg-product-image-placeholder">${icons.image}</div></div>`;
+    
+    const buttonHtml = productUrl 
+      ? `<a href="${productUrl}" target="_blank" rel="noopener" class="sg-product-btn sg-btn-primary">Vedi Prodotto</a>`
+      : `<span class="sg-product-btn sg-btn-disabled">Non disponibile</span>`;
     
     return `
       <div class="sg-product-card">
         ${imageHtml}
         <div class="sg-product-info">
-          <h5 class="sg-product-name">${escapeHtml(product.name || 'Prodotto')}</h5>
-          <p class="sg-product-price">${escapeHtml(product.price || 'Prezzo su richiesta')}</p>
+          <h5 class="sg-product-name">${productName}</h5>
+          <p class="sg-product-price">${productPrice}</p>
           <div class="sg-product-actions">
-            ${product.product_url ? `<a href="${escapeHtml(product.product_url)}" target="_blank" class="sg-product-btn sg-btn-primary">Vedi Prodotto</a>` : '<span class="sg-product-btn sg-btn-disabled">Link non disponibile</span>'}
+            ${buttonHtml}
           </div>
         </div>
       </div>
