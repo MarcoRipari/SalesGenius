@@ -473,6 +473,11 @@ def extract_product_from_element(element, base_url: str, source_id: str, user_id
                 break
     
     product['in_stock'] = True
+    
+    # Extract attributes from name
+    name = product.get('name', '')
+    product.update(extract_product_attributes(name))
+    
     return product
 
 def extract_single_product(soup, url: str, source_id: str, user_id: str, base_url: str) -> Dict:
