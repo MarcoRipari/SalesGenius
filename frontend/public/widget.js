@@ -591,13 +591,6 @@
     messagesEl.appendChild(msgEl);
     messages.push({ text, type, products });
     
-    // Attach event listeners to product buttons
-    if (products) {
-      msgEl.querySelectorAll('.sg-btn-cart').forEach(btn => {
-        btn.addEventListener('click', () => addToCart(btn.dataset.productId, btn.dataset.productName));
-      });
-    }
-    
     if (scroll) {
       messagesEl.scrollTop = messagesEl.scrollHeight;
     }
