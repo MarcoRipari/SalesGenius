@@ -15,7 +15,9 @@ import {
   LogOut,
   Menu,
   X,
-  Palette
+  Palette,
+  UsersRound,
+  Shield
 } from "lucide-react";
 
 const navItems = [
@@ -24,6 +26,8 @@ const navItems = [
   { path: "/dashboard/widget", icon: Palette, label: "Widget" },
   { path: "/dashboard/conversations", icon: MessageCircle, label: "Conversazioni" },
   { path: "/dashboard/leads", icon: Users, label: "Lead" },
+  { path: "/dashboard/team", icon: UsersRound, label: "Team" },
+  { path: "/dashboard/admin", icon: Shield, label: "Admin" },
   { path: "/dashboard/settings", icon: Settings, label: "Impostazioni" },
 ];
 
