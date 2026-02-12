@@ -612,10 +612,7 @@
           <h5 class="sg-product-name">${escapeHtml(product.name || 'Prodotto')}</h5>
           <p class="sg-product-price">${escapeHtml(product.price || 'Prezzo su richiesta')}</p>
           <div class="sg-product-actions">
-            ${product.product_url ? `<a href="${escapeHtml(product.product_url)}" target="_blank" class="sg-product-btn sg-btn-view">Vedi</a>` : ''}
-            <button class="sg-product-btn sg-btn-cart" data-product-id="${product.id}" data-product-name="${escapeHtml(product.name)}">
-              Carrello
-            </button>
+            ${product.product_url ? `<a href="${escapeHtml(product.product_url)}" target="_blank" class="sg-product-btn sg-btn-primary">Vedi Prodotto</a>` : '<span class="sg-product-btn sg-btn-disabled">Link non disponibile</span>'}
           </div>
         </div>
       </div>
