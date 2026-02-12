@@ -64,6 +64,7 @@ function AppRoutes() {
         <Route path="leads" element={<Leads />} />
         <Route path="team" element={<TeamManagement />} />
         <Route path="admin" element={<AdminSettings />} />
+        <Route path="superadmin" element={<SuperAdmin />} />
         <Route path="settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" />} />
