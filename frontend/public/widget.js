@@ -321,14 +321,17 @@
       opacity: 0.9;
     }
     
-    .sg-btn-view {
-      background: #e2e8f0;
-      color: #475569;
-    }
-    
-    .sg-btn-cart {
+    .sg-btn-primary {
       background: var(--sg-primary, #F97316);
       color: white;
+      flex: 1;
+    }
+    
+    .sg-btn-disabled {
+      background: #e2e8f0;
+      color: #94a3b8;
+      cursor: not-allowed;
+      flex: 1;
     }
     
     .sg-typing {
