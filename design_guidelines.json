@@ -1,0 +1,176 @@
+{
+  "identity": {
+    "name": "SalesGenius",
+    "archetype": "The Performance Pro",
+    "tone": "Competent, Kinetic, Clear, Trustworthy",
+    "vibe": "Elite Athleticism for Business. High precision, high contrast."
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Manrope, sans-serif",
+      "body": "Inter, sans-serif",
+      "code": "JetBrains Mono, monospace"
+    },
+    "scale": {
+      "h1": "text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight",
+      "h2": "text-3xl md:text-4xl font-bold tracking-tight",
+      "h3": "text-2xl font-bold tracking-tight",
+      "body_lg": "text-lg leading-relaxed",
+      "body_base": "text-base leading-relaxed text-muted-foreground",
+      "caption": "text-sm font-medium tracking-wide uppercase text-muted-foreground"
+    },
+    "imports": [
+      "@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');"
+    ]
+  },
+  "colors": {
+    "primary": {
+      "DEFAULT": "#F97316",
+      "foreground": "#FFFFFF",
+      "hover": "#EA580C"
+    },
+    "secondary": {
+      "DEFAULT": "#1E293B",
+      "foreground": "#F8FAFC",
+      "hover": "#0F172A"
+    },
+    "background": {
+      "light": "#F8FAFC",
+      "dark": "#020617"
+    },
+    "surface": {
+      "light": "#FFFFFF",
+      "dark": "#0F172A"
+    },
+    "accent": {
+      "DEFAULT": "#F1F5F9",
+      "foreground": "#0F172A",
+      "dark": "#1E293B",
+      "dark_foreground": "#F8FAFC"
+    },
+    "border": {
+      "light": "#E2E8F0",
+      "dark": "#1E293B"
+    },
+    "chart": {
+      "primary": "#F97316",
+      "secondary": "#3B82F6",
+      "tertiary": "#10B981",
+      "quaternary": "#F59E0B",
+      "quinary": "#6366F1"
+    }
+  },
+  "visual_enhancers": {
+    "gradients": {
+      "hero_glow": "background: radial-gradient(circle at center, rgba(249, 115, 22, 0.15) 0%, rgba(2, 6, 23, 0) 70%);",
+      "subtle_mesh": "background-image: radial-gradient(at 27% 37%, hsla(215, 98%, 61%, 0.1) 0px, transparent 50%), radial-gradient(at 97% 21%, hsla(24, 94%, 50%, 0.1) 0px, transparent 50%), radial-gradient(at 52% 99%, hsla(354, 98%, 61%, 0.1) 0px, transparent 50%);"
+    },
+    "shadows": {
+      "card": "shadow-[0_2px_8px_rgba(0,0,0,0.08)]",
+      "card_hover": "shadow-[0_8px_24px_rgba(0,0,0,0.12)]",
+      "neon": "0 0 10px rgba(249, 115, 22, 0.5), 0 0 20px rgba(249, 115, 22, 0.3)"
+    },
+    "borders": {
+      "glass": "border border-white/10",
+      "subtle": "border border-border"
+    },
+    "radius": {
+      "default": "rounded-lg",
+      "button": "rounded-md",
+      "card": "rounded-xl"
+    }
+  },
+  "layout_strategies": {
+    "dashboard_grid": {
+      "description": "Bento Grid Mode B (High Density)",
+      "classes": "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6",
+      "rules": "Every pixel utilized. Use h-full on children. No jagged bottoms."
+    },
+    "marketing_grid": {
+      "description": "Tetris Grid (Asymmetry)",
+      "classes": "grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12",
+      "rules": "Mix Hero (col-span-8), Square (col-span-4), and Tall (row-span-2) shapes."
+    },
+    "spacing": {
+      "section_padding": "py-20 md:py-32",
+      "container_padding": "px-6 md:px-12",
+      "internal_card_padding": "p-6 md:p-8"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm font-semibold transition-all duration-200 active:scale-95",
+      "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm font-medium",
+      "outline": "border border-input bg-background hover:bg-accent hover:text-accent-foreground font-medium",
+      "ghost": "hover:bg-accent hover:text-accent-foreground font-medium"
+    },
+    "cards": {
+      "dashboard": "bg-card text-card-foreground rounded-xl border border-border shadow-sm p-6 hover:border-primary/20 transition-colors",
+      "feature": "group relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 p-8 hover:bg-slate-900/80 transition-all duration-300"
+    },
+    "inputs": {
+      "default": "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+    }
+  },
+  "images": {
+    "hero_background": {
+      "url": "https://images.unsplash.com/photo-1768415840677-a15c173a15d7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzZ8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMGRpZ2l0YWwlMjBuZXR3b3JrJTIwY29ubmVjdGlvbiUyMG9yYW5nZSUyMGJsdWV8ZW58MHx8fHwxNzcwOTA0NTU0fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Abstract digital network background",
+      "position": "Hero Section Background",
+      "usage": "Use with heavy dark overlay (bg-slate-950/90) for text readability"
+    },
+    "team_collaboration": {
+      "url": "https://images.unsplash.com/photo-1758873269317-51888e824b28?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MTJ8MHwxfHNlYXJjaHwzfHxkaXZlcnNlJTIwYnVzaW5lc3MlMjB0ZWFtJTIwbWVldGluZyUyMG1vZGVybiUyMG9mZmljZXxlbnwwfHx8fDE3NzA5MDQ1NjJ8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Diverse team collaborating",
+      "position": "About / Team Section",
+      "usage": "Use in 'The Square' or 'The Hero' grid slot"
+    },
+    "widget_avatar": {
+      "url": "https://images.unsplash.com/photo-1729824186684-eaff43f7d1d9?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODR8MHwxfHNlYXJjaHwxfHxmcmllbmRseSUyMGN1c3RvbWVyJTIwc3VwcG9ydCUyMGFnZW50JTIwcG9ydHJhaXQlMjBzbWlsaW5nfGVufDB8fHx8MTc3MDkwNDU1Nnww&ixlib=rb-4.1.0&q=85",
+      "alt": "AI Support Agent",
+      "position": "Widget Preview Default Avatar",
+      "usage": "Rounded-full avatar image"
+    }
+  },
+  "animations": {
+    "libraries": [
+      "framer-motion"
+    ],
+    "patterns": {
+      "fade_up": {
+        "initial": { "opacity": 0, "y": 20 },
+        "animate": { "opacity": 1, "y": 0 },
+        "transition": { "duration": 0.5, "ease": "easeOut" }
+      },
+      "stagger_children": {
+        "container": {
+          "hidden": { "opacity": 0 },
+          "show": {
+            "opacity": 1,
+            "transition": { "staggerChildren": 0.1 }
+          }
+        },
+        "item": {
+          "hidden": { "opacity": 0, "y": 10 },
+          "show": { "opacity": 1, "y": 0 }
+        }
+      }
+    }
+  },
+  "accessibility_rules": [
+    "Text contrast must be at least 4.5:1 for normal text.",
+    "Interactive elements must have focus states (ring-2 ring-primary).",
+    "Do not rely on color alone for status (use icons + text).",
+    "All images must have descriptive alt text."
+  ],
+  "universal_guidelines": [
+    "Do not use generic 'Inter' for Headings. Use 'Manrope'.",
+    "Do not use purple/teal gradients. Stick to Orange/Slate.",
+    "Use 'sonner' for all toast notifications.",
+    "Use 'lucide-react' for icons.",
+    "Always apply 'data-testid' to interactive elements.",
+    "Dark mode is NOT just black. Use 'slate-950' and 'slate-900'.",
+    "Dashboard cards should have a subtle border in light mode, but rely on bg color difference in dark mode.",
+    "Widget Configurator: Split screen layout. Left: Controls (Scrollable), Right: Live Preview (Sticky)."
+  ]
+}
