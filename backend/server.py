@@ -311,8 +311,85 @@ def parse_jsonld_product(data: Dict, page_url: str, source_id: str, user_id: str
         "brand": data.get('brand', {}).get('name') if isinstance(data.get('brand'), dict) else data.get('brand'),
         "sku": data.get('sku'),
         "in_stock": offers.get('availability', '').lower().find('instock') != -1 if offers else True,
+        **extract_product_attributes(data.get('name', ''), data.get('description', '')),
         "created_at": datetime.now(timezone.utc).isoformat()
     }
+
+def extract_product_attributes(name: str, description: str = "") -> Dict:
+    """Extract product type, color, gender/age from name and description"""
+    text = f"{name} {description}".lower()
+    
+    # Product types
+    product_types = {
+        'sneaker': ['sneaker', 'sneakers', 'tennis'],
+        'stivale': ['stivale', 'stivali', 'boot', 'boots', 'stivaletto', 'stivaletti'],
+        'ballerina': ['ballerina', 'ballerine', 'flat', 'flats'],
+        'sandalo': ['sandalo', 'sandali', 'sandal', 'sandals'],
+        'mocassino': ['mocassino', 'mocassini', 'loafer', 'loafers'],
+        'scarpa_primi_passi': ['primi passi', 'first step', 'primissimi'],
+        'francesina': ['francesina', 'francesine', 'oxford', 'derby'],
+        'pantofola': ['pantofola', 'pantofole', 'slipper'],
+        'scarpa_sportiva': ['sportiva', 'sportive', 'running', 'training'],
+        'scarpa_elegante': ['elegante', 'eleganti', 'cerimonia', 'ceremony'],
+        'maglione': ['maglione', 'sweater', 'pullover', 'maglia'],
+        'giacca': ['giacca', 'jacket', 'giubbotto'],
+        't-shirt': ['t-shirt', 'tshirt', 'maglietta'],
+        'pantaloni': ['pantaloni', 'pants', 'trousers', 'jeans']
+    }
+    
+    # Colors
+    colors = {
+        'rosa': ['rosa', 'pink', 'fuxia', 'fucsia'],
+        'blu': ['blu', 'blue', 'navy', 'azzurro', 'celeste'],
+        'bianco': ['bianco', 'bianca', 'white', 'panna', 'avorio'],
+        'nero': ['nero', 'nera', 'black'],
+        'rosso': ['rosso', 'rossa', 'red'],
+        'verde': ['verde', 'green', 'militare', 'military', 'oliva'],
+        'giallo': ['giallo', 'gialla', 'yellow', 'senape', 'mustard'],
+        'arancione': ['arancione', 'arancio', 'orange'],
+        'marrone': ['marrone', 'brown', 'cuoio', 'cognac', 'tan', 'camel'],
+        'grigio': ['grigio', 'grigia', 'grey', 'gray'],
+        'viola': ['viola', 'purple', 'lilla'],
+        'oro': ['oro', 'gold', 'dorato'],
+        'argento': ['argento', 'silver', 'argentato'],
+        'beige': ['beige', 'sabbia', 'sand', 'nude'],
+        'multicolor': ['multicolor', 'multicolore', 'fantasia']
+    }
+    
+    # Gender/Age
+    genders = {
+        'bambina': ['bambina', 'bimba', 'girl', 'girls', 'femminuccia'],
+        'bambino': ['bambino', 'bimbo', 'boy', 'boys', 'maschietto'],
+        'donna': ['donna', 'women', 'woman', 'ladies', 'lady', 'femminile'],
+        'uomo': ['uomo', 'men', 'man', 'maschile', 'male'],
+        'unisex': ['unisex', 'uni']
+    }
+    
+    result = {
+        'product_type': None,
+        'color': None,
+        'gender': None
+    }
+    
+    # Find product type
+    for ptype, keywords in product_types.items():
+        if any(kw in text for kw in keywords):
+            result['product_type'] = ptype
+            break
+    
+    # Find color
+    for color, keywords in colors.items():
+        if any(kw in text for kw in keywords):
+            result['color'] = color
+            break
+    
+    # Find gender
+    for gender, keywords in genders.items():
+        if any(kw in text for kw in keywords):
+            result['gender'] = gender
+            break
+    
+    return result
 
 def extract_product_from_element(element, base_url: str, source_id: str, user_id: str) -> Dict:
     """Extract product from HTML element"""
