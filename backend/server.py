@@ -572,6 +572,217 @@ async def get_pricing_estimate():
     }
 
 
+# ==================== TEAM MANAGEMENT ROUTES ====================
+
+def check_admin_role(user):
+    """Check if user is admin of the organization"""
+    role = user.get("role", "admin")  # First user is always admin
+    if role not in ["admin", "owner"]:
+        raise HTTPException(status_code=403, detail="Accesso negato. Solo gli admin possono eseguire questa operazione.")
+    return True
+
+@api_router.get("/team/members")
+async def get_team_members(user = Depends(get_current_user)):
+    """Get all team members for the organization"""
+    org_id = user.get("org_id", user["id"])  # Use user id as org_id for first user
+    members = await db.team_members.find({"org_id": org_id}, {"_id": 0}).to_list(100)
+    
+    # Include the owner/creator
+    owner = await db.users.find_one({"id": org_id}, {"_id": 0, "password": 0})
+    if owner:
+        owner_member = {
+            "id": owner["id"],
+            "email": owner["email"],
+            "role": "owner",
+            "status": "active",
+            "invited_at": owner.get("created_at"),
+            "joined_at": owner.get("created_at")
+        }
+        members.insert(0, owner_member)
+    
+    return members
+
+@api_router.post("/team/invite")
+async def invite_team_member(invite: TeamMemberInvite, user = Depends(get_current_user)):
+    """Invite a new team member"""
+    check_admin_role(user)
+    org_id = user.get("org_id", user["id"])
+    
+    # Check if already invited or exists
+    existing = await db.team_members.find_one({"org_id": org_id, "email": invite.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Questo utente è già stato invitato")
+    
+    # Check if email already registered as user
+    existing_user = await db.users.find_one({"email": invite.email})
+    
+    member_doc = {
+        "id": str(uuid.uuid4()),
+        "org_id": org_id,
+        "email": invite.email,
+        "role": invite.role,
+        "status": "active" if existing_user else "pending",
+        "user_id": existing_user["id"] if existing_user else None,
+        "invited_by": user["id"],
+        "invited_at": datetime.now(timezone.utc).isoformat(),
+        "joined_at": datetime.now(timezone.utc).isoformat() if existing_user else None
+    }
+    await db.team_members.insert_one(member_doc)
+    
+    # If user exists, update their org_id
+    if existing_user:
+        await db.users.update_one({"id": existing_user["id"]}, {"$set": {"org_id": org_id, "role": invite.role}})
+    
+    return {"message": f"Invito inviato a {invite.email}", "member": {
+        "id": member_doc["id"],
+        "email": member_doc["email"],
+        "role": member_doc["role"],
+        "status": member_doc["status"]
+    }}
+
+@api_router.put("/team/members/{member_id}")
+async def update_team_member(member_id: str, update: TeamMemberUpdate, user = Depends(get_current_user)):
+    """Update team member role"""
+    check_admin_role(user)
+    org_id = user.get("org_id", user["id"])
+    
+    if update.role not in ["admin", "member", "viewer"]:
+        raise HTTPException(status_code=400, detail="Ruolo non valido")
+    
+    result = await db.team_members.update_one(
+        {"id": member_id, "org_id": org_id},
+        {"$set": {"role": update.role}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Membro non trovato")
+    
+    # Update user role too if they have a user_id
+    member = await db.team_members.find_one({"id": member_id}, {"_id": 0})
+    if member and member.get("user_id"):
+        await db.users.update_one({"id": member["user_id"]}, {"$set": {"role": update.role}})
+    
+    return {"message": "Ruolo aggiornato"}
+
+@api_router.delete("/team/members/{member_id}")
+async def remove_team_member(member_id: str, user = Depends(get_current_user)):
+    """Remove a team member"""
+    check_admin_role(user)
+    org_id = user.get("org_id", user["id"])
+    
+    member = await db.team_members.find_one({"id": member_id, "org_id": org_id}, {"_id": 0})
+    if not member:
+        raise HTTPException(status_code=404, detail="Membro non trovato")
+    
+    # Can't remove owner
+    if member.get("role") == "owner":
+        raise HTTPException(status_code=400, detail="Non puoi rimuovere il proprietario")
+    
+    await db.team_members.delete_one({"id": member_id, "org_id": org_id})
+    
+    # Remove org_id from user if exists
+    if member.get("user_id"):
+        await db.users.update_one({"id": member["user_id"]}, {"$unset": {"org_id": "", "role": ""}})
+    
+    return {"message": "Membro rimosso"}
+
+
+# ==================== ADMIN SETTINGS ROUTES ====================
+
+@api_router.get("/admin/settings")
+async def get_admin_settings(user = Depends(get_current_user)):
+    """Get organization admin settings"""
+    org_id = user.get("org_id", user["id"])
+    settings = await db.admin_settings.find_one({"org_id": org_id}, {"_id": 0})
+    
+    if not settings:
+        # Return default settings
+        user_data = await db.users.find_one({"id": org_id}, {"_id": 0})
+        settings = {
+            "org_id": org_id,
+            "company_name": user_data.get("company_name", ""),
+            "company_logo": None,
+            "support_email": user_data.get("email", ""),
+            "timezone": "Europe/Rome",
+            "language": "it",
+            "notification_new_lead": True,
+            "notification_new_conversation": False,
+            "ai_model": "gemini-3-flash-preview",
+            "max_tokens_per_response": 500
+        }
+    
+    return settings
+
+@api_router.put("/admin/settings")
+async def update_admin_settings(settings: AdminSettingsUpdate, user = Depends(get_current_user)):
+    """Update organization admin settings"""
+    check_admin_role(user)
+    org_id = user.get("org_id", user["id"])
+    
+    update_data = {k: v for k, v in settings.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.admin_settings.update_one(
+        {"org_id": org_id},
+        {"$set": update_data},
+        upsert=True
+    )
+    
+    # Update company name in users table too
+    if settings.company_name:
+        await db.users.update_one({"id": org_id}, {"$set": {"company_name": settings.company_name}})
+    
+    return {"message": "Impostazioni aggiornate"}
+
+@api_router.get("/admin/api-config")
+async def get_api_config(user = Depends(get_current_user)):
+    """Get AI API configuration info"""
+    check_admin_role(user)
+    
+    # Check if custom API key is set
+    has_custom_key = bool(os.environ.get("CUSTOM_LLM_KEY"))
+    
+    return {
+        "current_model": "gemini-3-flash-preview",
+        "provider": "Google Gemini",
+        "using_emergent_key": not has_custom_key,
+        "available_models": [
+            {"id": "gemini-3-flash-preview", "name": "Gemini 3 Flash", "cost_input": 0.10, "cost_output": 0.40},
+            {"id": "gemini-2.5-flash", "name": "Gemini 2.5 Flash", "cost_input": 0.15, "cost_output": 0.60},
+            {"id": "gpt-5.2", "name": "GPT-5.2", "cost_input": 2.50, "cost_output": 10.00}
+        ],
+        "instructions": {
+            "emergent_key": "Stai usando la Emergent LLM Key universale. I costi vengono addebitati al tuo account Emergent.",
+            "custom_key": "Per usare una tua API key, contatta il supporto o configura CUSTOM_LLM_KEY nelle variabili d'ambiente."
+        }
+    }
+
+
+# ==================== USER PROFILE UPDATE ====================
+
+@api_router.put("/auth/profile")
+async def update_profile(
+    company_name: Optional[str] = None,
+    email: Optional[str] = None,
+    user = Depends(get_current_user)
+):
+    """Update user profile"""
+    update_data = {}
+    if company_name:
+        update_data["company_name"] = company_name
+    if email:
+        # Check if email is already taken
+        existing = await db.users.find_one({"email": email, "id": {"$ne": user["id"]}})
+        if existing:
+            raise HTTPException(status_code=400, detail="Email già in uso")
+        update_data["email"] = email
+    
+    if update_data:
+        await db.users.update_one({"id": user["id"]}, {"$set": update_data})
+    
+    return {"message": "Profilo aggiornato"}
+
+
 # Include router and middleware
 app.include_router(api_router)
 
