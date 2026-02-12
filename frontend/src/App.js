@@ -15,6 +15,7 @@ import KnowledgeBase from "./pages/KnowledgeBase";
 import WidgetConfig from "./pages/WidgetConfig";
 import Conversations from "./pages/Conversations";
 import Leads from "./pages/Leads";
+import Products from "./pages/Products";
 import Settings from "./pages/Settings";
 import TeamManagement from "./pages/TeamManagement";
 import AdminSettings from "./pages/AdminSettings";
