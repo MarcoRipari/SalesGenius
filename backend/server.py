@@ -110,6 +110,18 @@ class AdminSettingsUpdate(BaseModel):
     ai_model: Optional[str] = None
     max_tokens_per_response: Optional[int] = None
 
+# Product Models
+class ProductResponse(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    price: Optional[str] = None
+    price_value: Optional[float] = None
+    image_url: Optional[str] = None
+    product_url: str
+    category: Optional[str] = None
+    in_stock: bool = True
+
 class WidgetConfigResponse(BaseModel):
     id: str
     user_id: str
