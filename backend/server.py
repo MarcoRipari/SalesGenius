@@ -599,7 +599,63 @@ async def delete_knowledge_source(source_id: str, user = Depends(get_current_use
     result = await db.knowledge_sources.delete_one({"id": source_id, "user_id": user["id"]})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Fonte non trovata")
+    # Also delete associated products
+    await db.products.delete_many({"source_id": source_id})
     return {"message": "Fonte eliminata"}
+
+
+# ==================== PRODUCTS ROUTES ====================
+
+@api_router.get("/products")
+async def get_products(user = Depends(get_current_user), limit: int = 50):
+    """Get all products for the user"""
+    products = await db.products.find(
+        {"user_id": user["id"]}, 
+        {"_id": 0}
+    ).limit(limit).to_list(limit)
+    return products
+
+@api_router.get("/products/search")
+async def search_products_api(q: str, user = Depends(get_current_user)):
+    """Search products by query"""
+    products = await search_products(user["id"], q, limit=10)
+    return products
+
+@api_router.get("/products/by-source/{source_id}")
+async def get_products_by_source(source_id: str, user = Depends(get_current_user)):
+    """Get products from a specific knowledge source"""
+    products = await db.products.find(
+        {"user_id": user["id"], "source_id": source_id}, 
+        {"_id": 0}
+    ).to_list(100)
+    return products
+
+@api_router.post("/products/rescan/{source_id}")
+async def rescan_products(source_id: str, user = Depends(get_current_user)):
+    """Rescan a URL source for products"""
+    source = await db.knowledge_sources.find_one(
+        {"id": source_id, "user_id": user["id"], "type": "url"},
+        {"_id": 0}
+    )
+    if not source:
+        raise HTTPException(status_code=404, detail="Fonte URL non trovata")
+    
+    # Delete existing products from this source
+    await db.products.delete_many({"source_id": source_id})
+    
+    # Re-extract products
+    products = await extract_products_from_url(source["url"], source_id, user["id"])
+    products_count = 0
+    if products:
+        await db.products.insert_many(products)
+        products_count = len(products)
+    
+    await db.knowledge_sources.update_one(
+        {"id": source_id},
+        {"$set": {"products_count": products_count}}
+    )
+    
+    return {"message": f"Scansione completata. {products_count} prodotti trovati.", "products_count": products_count}
 
 
 # ==================== WIDGET CONFIG ROUTES ====================
