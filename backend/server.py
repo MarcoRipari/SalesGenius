@@ -526,8 +526,9 @@ async def add_url_source(source: KnowledgeSourceCreate, user = Depends(get_curre
         logger.error(f"Error fetching URL: {e}")
         content = ""
     
+    source_id = str(uuid.uuid4())
     source_doc = {
-        "id": str(uuid.uuid4()),
+        "id": source_id,
         "user_id": user["id"],
         "type": "url",
         "name": source.name,
@@ -535,11 +536,31 @@ async def add_url_source(source: KnowledgeSourceCreate, user = Depends(get_curre
         "content": content,
         "content_preview": content[:200] if content else None,
         "status": "active" if content else "error",
+        "products_count": 0,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.knowledge_sources.insert_one(source_doc)
     
-    return {"id": source_doc["id"], "status": source_doc["status"], "message": "Fonte aggiunta con successo"}
+    # Extract products in background
+    products_count = 0
+    try:
+        products = await extract_products_from_url(source.url, source_id, user["id"])
+        if products:
+            await db.products.insert_many(products)
+            products_count = len(products)
+            await db.knowledge_sources.update_one(
+                {"id": source_id},
+                {"$set": {"products_count": products_count}}
+            )
+    except Exception as e:
+        logger.error(f"Error extracting products: {e}")
+    
+    return {
+        "id": source_doc["id"], 
+        "status": source_doc["status"], 
+        "products_count": products_count,
+        "message": f"Fonte aggiunta con successo. {products_count} prodotti estratti."
+    }
 
 @api_router.post("/knowledge/pdf")
 async def add_pdf_source(
