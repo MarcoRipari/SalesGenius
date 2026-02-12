@@ -537,80 +537,72 @@ async def search_products(user_id: str, query: str, limit: int = 6) -> List[Dict
     has_color = query_attrs.get('color') is not None
     has_gender = query_attrs.get('gender') is not None
     
-    # Priority 1: Search with ALL specified attributes (strict)
-    if has_type or has_color or has_gender:
-        filter_conditions = {"user_id": user_id}
-        if has_type:
-            filter_conditions["product_type"] = query_attrs['product_type']
-        if has_color:
-            filter_conditions["color"] = query_attrs['color']
+    # Priority 1: Search with ALL specified attributes (strict) - return even if only 1 result
+    if has_type and has_color:
+        filter_conditions = {
+            "user_id": user_id,
+            "product_type": query_attrs['product_type'],
+            "color": query_attrs['color']
+        }
         if has_gender:
             filter_conditions["gender"] = query_attrs['gender']
         
         products = await db.products.find(filter_conditions, {"_id": 0}).limit(limit).to_list(limit)
         
-        # If found products with exact match, return them even if less than limit
+        # Return exact matches - don't fallback to other colors!
         if products:
             return products
+        # If no exact match with type+color, return empty - AI will explain
     
-    # Priority 2: If no exact match, try with product_type only (but keep color in results message)
-    if has_type and has_color:
-        filter_conditions = {
-            "user_id": user_id,
-            "product_type": query_attrs['product_type']
-        }
+    # Priority 2: If only type specified
+    if has_type and not has_color:
+        filter_conditions = {"user_id": user_id, "product_type": query_attrs['product_type']}
+        if has_gender:
+            filter_conditions["gender"] = query_attrs['gender']
+        
         products = await db.products.find(filter_conditions, {"_id": 0}).limit(limit).to_list(limit)
         if products:
-            # Sort to put matching colors first
-            target_color = query_attrs['color']
-            products.sort(key=lambda p: (0 if p.get('color') == target_color else 1, p.get('name', '')))
             return products
     
-    # Priority 3: Search by type or color individually
-    if has_type:
-        products = await db.products.find(
-            {"user_id": user_id, "product_type": query_attrs['product_type']},
-            {"_id": 0}
-        ).limit(limit).to_list(limit)
-        if products:
-            return products
-    
-    if has_color:
-        products = await db.products.find(
-            {"user_id": user_id, "color": query_attrs['color']},
-            {"_id": 0}
-        ).limit(limit).to_list(limit)
-        if products:
-            return products
-    
-    # Priority 4: Full text search as fallback
-    words = [w for w in query_lower.split() if len(w) > 2 and w not in ['una', 'uno', 'per', 'con', 'del', 'della', 'cerco', 'voglio', 'vorrei', 'delle', 'degli']]
-    
-    if words:
-        text_conditions = []
-        for word in words[:3]:
-            regex = {"$regex": word, "$options": "i"}
-            text_conditions.append({
-                "$or": [
-                    {"name": regex},
-                    {"description": regex},
-                    {"category": regex}
-                ]
-            })
+    # Priority 3: If only color specified
+    if has_color and not has_type:
+        filter_conditions = {"user_id": user_id, "color": query_attrs['color']}
+        if has_gender:
+            filter_conditions["gender"] = query_attrs['gender']
         
-        if text_conditions:
-            products = await db.products.find(
-                {"user_id": user_id, "$and": text_conditions},
-                {"_id": 0}
-            ).limit(limit).to_list(limit)
+        products = await db.products.find(filter_conditions, {"_id": 0}).limit(limit).to_list(limit)
+        if products:
+            return products
+    
+    # Priority 4: Full text search (only if no attributes detected)
+    if not has_type and not has_color:
+        words = [w for w in query_lower.split() if len(w) > 2 and w not in ['una', 'uno', 'per', 'con', 'del', 'della', 'cerco', 'voglio', 'vorrei', 'delle', 'degli']]
+        
+        if words:
+            text_conditions = []
+            for word in words[:3]:
+                regex = {"$regex": word, "$options": "i"}
+                text_conditions.append({
+                    "$or": [
+                        {"name": regex},
+                        {"description": regex},
+                        {"category": regex}
+                    ]
+                })
             
-            if not products:
+            if text_conditions:
                 products = await db.products.find(
-                    {"user_id": user_id, "$or": text_conditions},
+                    {"user_id": user_id, "$and": text_conditions},
                     {"_id": 0}
                 ).limit(limit).to_list(limit)
-            
-            return products
+                
+                if not products:
+                    products = await db.products.find(
+                        {"user_id": user_id, "$or": text_conditions},
+                        {"_id": 0}
+                    ).limit(limit).to_list(limit)
+                
+                return products
     
     return []
 
