@@ -18,7 +18,8 @@ import {
   Palette,
   UsersRound,
   Shield,
-  Package
+  Package,
+  Crown
 } from "lucide-react";
 
 const navItems = [
@@ -30,6 +31,7 @@ const navItems = [
   { path: "/dashboard/leads", icon: Users, label: "Lead" },
   { path: "/dashboard/team", icon: UsersRound, label: "Team" },
   { path: "/dashboard/admin", icon: Shield, label: "Admin" },
+  { path: "/dashboard/superadmin", icon: Crown, label: "Super Admin", superAdminOnly: true },
   { path: "/dashboard/settings", icon: Settings, label: "Impostazioni" },
 ];
 
