@@ -198,6 +198,249 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
+# ==================== PRODUCT SCRAPING HELPERS ====================
+
+async def extract_products_from_url(url: str, source_id: str, user_id: str) -> List[Dict]:
+    """Extract product information from a URL using various strategies"""
+    products = []
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(url, follow_redirects=True)
+            html = response.text
+            soup = BeautifulSoup(html, 'html.parser')
+            base_url = '/'.join(url.split('/')[:3])
+            
+            # Strategy 1: Look for JSON-LD structured data
+            json_ld_scripts = soup.find_all('script', type='application/ld+json')
+            for script in json_ld_scripts:
+                try:
+                    data = json.loads(script.string)
+                    if isinstance(data, list):
+                        for item in data:
+                            if item.get('@type') == 'Product':
+                                products.append(parse_jsonld_product(item, url, source_id, user_id, base_url))
+                    elif data.get('@type') == 'Product':
+                        products.append(parse_jsonld_product(data, url, source_id, user_id, base_url))
+                    elif data.get('@type') == 'ItemList':
+                        for item in data.get('itemListElement', []):
+                            if item.get('@type') == 'Product' or item.get('item', {}).get('@type') == 'Product':
+                                prod = item if item.get('@type') == 'Product' else item.get('item', {})
+                                products.append(parse_jsonld_product(prod, url, source_id, user_id, base_url))
+                except:
+                    pass
+            
+            # Strategy 2: Look for common e-commerce product patterns
+            if not products:
+                # WooCommerce, Shopify, generic patterns
+                product_selectors = [
+                    '.product', '.product-item', '.product-card', 
+                    '[data-product]', '.woocommerce-loop-product',
+                    '.product-grid-item', '.collection-product',
+                    'article.product', '.products li'
+                ]
+                
+                for selector in product_selectors:
+                    items = soup.select(selector)
+                    for item in items[:50]:  # Limit to 50 products per page
+                        product = extract_product_from_element(item, base_url, source_id, user_id)
+                        if product and product.get('name'):
+                            products.append(product)
+                    if products:
+                        break
+            
+            # Strategy 3: Look for individual product page
+            if not products:
+                product = extract_single_product(soup, url, source_id, user_id, base_url)
+                if product and product.get('name'):
+                    products.append(product)
+            
+    except Exception as e:
+        logger.error(f"Error extracting products from {url}: {e}")
+    
+    return products
+
+def parse_jsonld_product(data: Dict, page_url: str, source_id: str, user_id: str, base_url: str) -> Dict:
+    """Parse JSON-LD product data"""
+    price = None
+    price_value = None
+    
+    offers = data.get('offers', {})
+    if isinstance(offers, list) and offers:
+        offers = offers[0]
+    if offers:
+        price = offers.get('price')
+        price_value = float(price) if price else None
+        currency = offers.get('priceCurrency', '€')
+        if price:
+            price = f"{currency} {price}"
+    
+    image = data.get('image')
+    if isinstance(image, list):
+        image = image[0] if image else None
+    if isinstance(image, dict):
+        image = image.get('url')
+    if image and not image.startswith('http'):
+        image = base_url + image if image.startswith('/') else base_url + '/' + image
+    
+    product_url = data.get('url', page_url)
+    if product_url and not product_url.startswith('http'):
+        product_url = base_url + product_url if product_url.startswith('/') else base_url + '/' + product_url
+    
+    return {
+        "id": str(uuid.uuid4()),
+        "source_id": source_id,
+        "user_id": user_id,
+        "name": data.get('name', ''),
+        "description": data.get('description', '')[:500] if data.get('description') else None,
+        "price": price,
+        "price_value": price_value,
+        "image_url": image,
+        "product_url": product_url,
+        "category": data.get('category'),
+        "brand": data.get('brand', {}).get('name') if isinstance(data.get('brand'), dict) else data.get('brand'),
+        "sku": data.get('sku'),
+        "in_stock": offers.get('availability', '').lower().find('instock') != -1 if offers else True,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+
+def extract_product_from_element(element, base_url: str, source_id: str, user_id: str) -> Dict:
+    """Extract product from HTML element"""
+    product = {
+        "id": str(uuid.uuid4()),
+        "source_id": source_id,
+        "user_id": user_id,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Find name
+    name_selectors = ['h2', 'h3', 'h4', '.product-name', '.product-title', '.title', '[class*="title"]', '[class*="name"]', 'a']
+    for sel in name_selectors:
+        name_el = element.select_one(sel)
+        if name_el and name_el.get_text(strip=True):
+            product['name'] = name_el.get_text(strip=True)[:200]
+            break
+    
+    # Find image
+    img = element.select_one('img')
+    if img:
+        img_src = img.get('src') or img.get('data-src') or img.get('data-lazy-src')
+        if img_src:
+            if not img_src.startswith('http'):
+                img_src = base_url + img_src if img_src.startswith('/') else base_url + '/' + img_src
+            product['image_url'] = img_src
+    
+    # Find price
+    price_selectors = ['.price', '[class*="price"]', '.amount', '.woocommerce-Price-amount']
+    for sel in price_selectors:
+        price_el = element.select_one(sel)
+        if price_el:
+            price_text = price_el.get_text(strip=True)
+            product['price'] = price_text
+            # Extract numeric value
+            price_match = re.search(r'[\d,.]+', price_text.replace(',', '.'))
+            if price_match:
+                try:
+                    product['price_value'] = float(price_match.group().replace(',', '.'))
+                except:
+                    pass
+            break
+    
+    # Find link
+    link = element.select_one('a[href]')
+    if link:
+        href = link.get('href', '')
+        if href and not href.startswith('#') and not href.startswith('javascript'):
+            if not href.startswith('http'):
+                href = base_url + href if href.startswith('/') else base_url + '/' + href
+            product['product_url'] = href
+    
+    product['in_stock'] = True
+    return product
+
+def extract_single_product(soup, url: str, source_id: str, user_id: str, base_url: str) -> Dict:
+    """Extract single product from a product detail page"""
+    product = {
+        "id": str(uuid.uuid4()),
+        "source_id": source_id,
+        "user_id": user_id,
+        "product_url": url,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Find name from h1 or title
+    h1 = soup.select_one('h1')
+    if h1:
+        product['name'] = h1.get_text(strip=True)[:200]
+    else:
+        title = soup.select_one('title')
+        if title:
+            product['name'] = title.get_text(strip=True).split('|')[0].split('-')[0].strip()[:200]
+    
+    # Find main image
+    main_img = soup.select_one('.product-image img, .woocommerce-product-gallery img, [class*="product"] img')
+    if main_img:
+        img_src = main_img.get('src') or main_img.get('data-src')
+        if img_src and not img_src.startswith('http'):
+            img_src = base_url + img_src if img_src.startswith('/') else base_url + '/' + img_src
+        product['image_url'] = img_src
+    
+    # Find price
+    price_el = soup.select_one('.price, [class*="price"], .woocommerce-Price-amount')
+    if price_el:
+        product['price'] = price_el.get_text(strip=True)
+        price_match = re.search(r'[\d,.]+', product['price'].replace(',', '.'))
+        if price_match:
+            try:
+                product['price_value'] = float(price_match.group().replace(',', '.'))
+            except:
+                pass
+    
+    # Find description
+    desc_el = soup.select_one('.description, .product-description, [class*="description"]')
+    if desc_el:
+        product['description'] = desc_el.get_text(strip=True)[:500]
+    
+    product['in_stock'] = True
+    return product
+
+async def search_products(user_id: str, query: str, limit: int = 6) -> List[Dict]:
+    """Search products by text query"""
+    # Create search regex for each word in the query
+    words = query.lower().split()
+    search_conditions = []
+    
+    for word in words:
+        if len(word) > 2:  # Skip very short words
+            regex = {"$regex": word, "$options": "i"}
+            search_conditions.append({
+                "$or": [
+                    {"name": regex},
+                    {"description": regex},
+                    {"category": regex},
+                    {"brand": regex}
+                ]
+            })
+    
+    if not search_conditions:
+        return []
+    
+    # Find products matching all words
+    products = await db.products.find(
+        {"user_id": user_id, "$and": search_conditions},
+        {"_id": 0}
+    ).limit(limit).to_list(limit)
+    
+    # If no exact match, try partial match
+    if not products and words:
+        products = await db.products.find(
+            {"user_id": user_id, "$or": search_conditions},
+            {"_id": 0}
+        ).limit(limit).to_list(limit)
+    
+    return products
+
+
 # ==================== AUTH ROUTES ====================
 
 @api_router.post("/auth/register")
